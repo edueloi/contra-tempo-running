@@ -1,0 +1,10 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="32" height="32" rx="4" fill="#000000"/>
+  
+  <!-- Letter C -->
+  <path d="M 6 8 C 6 7, 7 6, 8 6 L 11 6 C 12 6, 13 7, 13 8 L 13 10 L 11 10 L 11 8.5 L 8 8.5 L 8 23.5 L 11 23.5 L 11 22 L 13 22 L 13 24 C 13 25, 12 26, 11 26 L 8 26 C 7 26, 6 25, 6 24 Z" fill="#FDF001"/>
+  
+  <!-- Letter T -->
+  <path d="M 15 6 L 26 6 L 26 8.5 L 22 8.5 L 22 26 L 19 26 L 19 8.5 L 15 8.5 Z" fill="#FFFFFF"/>
+</svg>
