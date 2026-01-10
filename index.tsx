@@ -11,148 +11,9 @@ import {
   LayoutDashboard, ListChecks, History, PieChart, ShieldAlert,
   Zap as ZapIcon, Info, ChevronUp, Droplets, Heart, Filter, Facebook, Twitter
 } from 'lucide-react';
-
-// --- SISTEMA DE AUTENTICAÇÃO E DADOS ---
-
-interface User {
-  id: string;
-  username: string;
-  password: string;
-  name: string;
-  role: 'coach' | 'atleta';
-  email?: string;
-  phone?: string;
-}
-
-interface AthleteData {
-  id: string;
-  userId: string;
-  vdot: number;
-  plan: string;
-  weeklyVolume: number[];
-  activities: Activity[];
-  stats: {
-    sleep: string;
-    hrv: string;
-    weight: string;
-    recovery: string;
-  };
-  prs: { dist: string; time: string; pace: string; date: string }[];
-}
-
-interface Activity {
-  id: string;
-  date: string;
-  type: string;
-  distance: string;
-  time: string;
-  pace: string;
-  notes: string;
-}
-
-// Sistema de dados local
-class DataManager {
-  private static USERS_KEY = 'contratempo_users';
-  private static ATHLETES_KEY = 'contratempo_athletes';
-  private static COACH_KEY = 'contratempo_coach';
-
-  static initializeCoach() {
-    const users = this.getUsers();
-    const coachExists = users.find(u => u.role === 'coach');
-    
-    if (!coachExists) {
-      const coach: User = {
-        id: 'coach_1',
-        username: 'coach',
-        password: 'coach123',
-        name: 'Coach Adriano',
-        role: 'coach',
-        email: 'coach@contratempo.com'
-      };
-      users.push(coach);
-      this.saveUsers(users);
-    }
-  }
-
-  static getUsers(): User[] {
-    const data = localStorage.getItem(this.USERS_KEY);
-    return data ? JSON.parse(data) : [];
-  }
-
-  static saveUsers(users: User[]) {
-    localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
-  }
-
-  static authenticate(username: string, password: string): User | null {
-    const users = this.getUsers();
-    return users.find(u => u.username === username && u.password === password) || null;
-  }
-
-  static registerAthlete(username: string, password: string, name: string, email: string, phone: string): User {
-    const users = this.getUsers();
-    const newUser: User = {
-      id: `athlete_${Date.now()}`,
-      username,
-      password,
-      name,
-      role: 'atleta',
-      email,
-      phone
-    };
-    users.push(newUser);
-    this.saveUsers(users);
-
-    // Criar dados iniciais do atleta
-    const athleteData: AthleteData = {
-      id: newUser.id,
-      userId: newUser.id,
-      vdot: 0,
-      plan: 'Iniciante',
-      weeklyVolume: [0, 0, 0, 0, 0, 0, 0],
-      activities: [],
-      stats: {
-        sleep: '0h 0m',
-        hrv: '0ms',
-        weight: '0kg',
-        recovery: '0%'
-      },
-      prs: []
-    };
-    this.saveAthleteData(athleteData);
-
-    return newUser;
-  }
-
-  static getAthleteData(userId: string): AthleteData | null {
-    const data = localStorage.getItem(this.ATHLETES_KEY);
-    const athletes: AthleteData[] = data ? JSON.parse(data) : [];
-    return athletes.find(a => a.userId === userId) || null;
-  }
-
-  static getAllAthletesData(): AthleteData[] {
-    const data = localStorage.getItem(this.ATHLETES_KEY);
-    return data ? JSON.parse(data) : [];
-  }
-
-  static saveAthleteData(athleteData: AthleteData) {
-    const data = localStorage.getItem(this.ATHLETES_KEY);
-    let athletes: AthleteData[] = data ? JSON.parse(data) : [];
-    
-    const index = athletes.findIndex(a => a.userId === athleteData.userId);
-    if (index >= 0) {
-      athletes[index] = athleteData;
-    } else {
-      athletes.push(athleteData);
-    }
-    
-    localStorage.setItem(this.ATHLETES_KEY, JSON.stringify(athletes));
-  }
-
-  static getAthletes(): User[] {
-    const users = this.getUsers();
-    return users.filter(u => u.role === 'atleta');
-  }
-}
+import DataManager from './auth/DataManager';
+import LoginModal from './components/LoginModal';
+import type { User as UserType } from './types/auth';
 
 // Inicializar coach padrão
 DataManager.initializeCoach();
@@ -699,7 +560,7 @@ const ProfessorDashboard = ({ user, onLogout }: { user: any, onLogout: () => voi
   const [activeTab, setActiveTab] = useState('squad');
   const [showAddAthlete, setShowAddAthlete] = useState(false);
   const [newAthlete, setNewAthlete] = useState({ username: '', password: '', name: '', email: '', phone: '' });
-  const [athletesList, setAthletesList] = useState<User[]>([]);
+  const [athletesList, setAthletesList] = useState<UserType[]>([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -1027,151 +888,13 @@ const ProfessorDashboard = ({ user, onLogout }: { user: any, onLogout: () => voi
 
 // --- LOGIN MODAL ---
 
-const LoginModal = ({ isOpen, onClose, onLogin }: { isOpen: boolean, onClose: () => void, onLogin: (user: User) => void }) => {
-  const [step, setStep] = useState<'selection' | 'login' | 'loading'>('selection');
-  const [loginType, setLoginType] = useState<'coach' | 'atleta'>('atleta');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  
-  const startLogin = (type: 'coach' | 'atleta') => {
-    setLoginType(type);
-    setStep('login');
-    setError('');
-    setUsername('');
-    setPassword('');
-  };
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    
-    const user = DataManager.authenticate(username, password);
-    
-    if (!user) {
-      setError('Usuário ou senha incorretos');
-      return;
-    }
-    
-    if (user.role !== loginType) {
-      setError(`Esta conta não é de ${loginType === 'coach' ? 'coach' : 'atleta'}`);
-      return;
-    }
-    
-    setStep('loading');
-    setTimeout(() => {
-      onLogin(user);
-      setStep('selection');
-      setUsername('');
-      setPassword('');
-    }, 1500);
-  };
-
-  const goBack = () => {
-    setStep('selection');
-    setError('');
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 backdrop-blur-3xl bg-black/95">
-      <div className="glass w-full max-w-xl p-8 md:p-12 rounded-[4rem] relative border border-[#fdf001]/10 overflow-hidden shadow-[0_0_100px_rgba(253,240,1,0.1)]">
-        <button onClick={onClose} className="absolute top-8 right-8 text-white/40 hover:text-white transition-colors z-50"><X size={32} /></button>
-        
-        {step === 'selection' ? (
-          <div className="text-center animate-in zoom-in-95 duration-300">
-            <div className="bg-[#fdf001] w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-10 shadow-2xl shadow-[#fdf001]/30">
-               <Timer size={48} className="text-black" />
-            </div>
-            <h2 className="text-4xl md:text-5xl font-black italic uppercase text-white mb-12 tracking-tighter">ÁREA DO <span className="text-[#fdf001]">SQUAD</span></h2>
-            <div className="grid gap-6">
-              <button onClick={() => startLogin('atleta')} className="group w-full bg-white/5 border border-white/5 p-8 rounded-[2.5rem] flex items-center justify-between hover:border-[#fdf001]/40 hover:bg-[#fdf001]/5 transition-all">
-                <div className="text-left">
-                   <span className="block font-black italic uppercase text-2xl text-white">LOGIN ATLETA</span>
-                   <span className="text-[10px] font-bold text-gray-500 tracking-[0.2em] uppercase">Minhas Planilhas</span>
-                </div>
-                <div className="bg-white/5 p-4 rounded-2xl group-hover:bg-[#fdf001] transition-all"><User className="text-[#fdf001] group-hover:text-black" size={32} /></div>
-              </button>
-              <button onClick={() => startLogin('coach')} className="group w-full bg-[#fdf001] p-8 rounded-[2.5rem] flex items-center justify-between hover:bg-white text-black transition-all">
-                <div className="text-left">
-                   <span className="block font-black italic uppercase text-2xl">HEAD COACH</span>
-                   <span className="text-[10px] font-bold opacity-60 tracking-[0.2em] uppercase">Gestão Técnica</span>
-                </div>
-                <ShieldCheck size={40} className="opacity-40" />
-              </button>
-            </div>
-          </div>
-        ) : step === 'login' ? (
-          <div className="animate-in fade-in zoom-in duration-300">
-            <button onClick={goBack} className="mb-6 text-white/60 hover:text-white flex items-center gap-2 text-sm font-bold uppercase tracking-wider">
-              <ChevronDown className="rotate-90" size={16} /> Voltar
-            </button>
-            <div className="text-center mb-8">
-              <div className={`${loginType === 'coach' ? 'bg-[#fdf001]' : 'bg-white/10'} w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6`}>
-                {loginType === 'coach' ? <ShieldCheck size={40} className="text-black" /> : <User size={40} className="text-[#fdf001]" />}
-              </div>
-              <h3 className="text-3xl font-black italic uppercase text-white tracking-tighter">
-                {loginType === 'coach' ? 'HEAD COACH' : 'ATLETA'} <span className="text-[#fdf001]">LOGIN</span>
-              </h3>
-              {loginType === 'coach' && (
-                <p className="text-xs text-gray-500 mt-2 font-bold tracking-wider">Padrão: coach / coach123</p>
-              )}
-            </div>
-            <form onSubmit={handleLogin} className="space-y-6">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Usuário</label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold focus:outline-none focus:border-[#fdf001] transition-all"
-                  placeholder="Digite seu usuário"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Senha</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold focus:outline-none focus:border-[#fdf001] transition-all"
-                  placeholder="Digite sua senha"
-                  required
-                />
-              </div>
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-red-400 text-sm font-bold text-center">
-                  {error}
-                </div>
-              )}
-              <button 
-                type="submit"
-                className="w-full bg-[#fdf001] hover:bg-white text-black font-black uppercase tracking-wider py-5 rounded-2xl transition-all text-lg"
-              >
-                ENTRAR
-              </button>
-            </form>
-          </div>
-        ) : (
-          <div className="text-center py-24 animate-in fade-in zoom-in">
-            <Rocket size={80} className="text-[#fdf001] mx-auto mb-10 animate-bounce" />
-            <h3 className="text-4xl font-black italic uppercase text-white tracking-widest leading-none">AUTENTICANDO <br /> PROTOCOLO...</h3>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
 // --- APP ---
 
 const App = () => {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserType | null>(null);
 
-  const handleLogin = (loggedUser: User) => {
+  const handleLogin = (loggedUser: UserType) => {
     setUser(loggedUser);
     setIsLoginOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
