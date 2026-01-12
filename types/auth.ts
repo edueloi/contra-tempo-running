@@ -8,13 +8,67 @@ export interface User {
   phone?: string;
 }
 
+export interface TrainingPlan {
+  id: string;
+  name: string;
+  level: string;
+  goal: string;
+  weeklyTargetKm: number;
+  notes: string;
+  workouts: Workout[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Workout {
+  id: string;
+  title: string;
+  day: string;
+  type: string;
+  distanceKm: number;
+  durationMin: number;
+  pace: string;
+  notes: string;
+}
+
+export interface ActivityEntry {
+  id: string;
+  date: string;
+  type: string;
+  distanceKm: number;
+  timeMin: number;
+  pace: string;
+  notes: string;
+}
+
+export interface MetricsEntry {
+  id: string;
+  date: string;
+  sleepHours: number;
+  hrv: number;
+  weightKg: number;
+  recoveryPct: number;
+}
+
+export interface AlertItem {
+  id: string;
+  athleteId: string;
+  type: string;
+  severity: 'low' | 'medium' | 'high';
+  message: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
 export interface AthleteData {
   id: string;
   userId: string;
   vdot: number;
   plan: string;
+  planId: string | null;
   weeklyVolume: number[];
-  activities: Activity[];
+  activities: ActivityEntry[];
+  metrics: MetricsEntry[];
   stats: {
     sleep: string;
     hrv: string;
@@ -22,14 +76,4 @@ export interface AthleteData {
     recovery: string;
   };
   prs: { dist: string; time: string; pace: string; date: string }[];
-}
-
-export interface Activity {
-  id: string;
-  date: string;
-  type: string;
-  distance: string;
-  time: string;
-  pace: string;
-  notes: string;
 }
