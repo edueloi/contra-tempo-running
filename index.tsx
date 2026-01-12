@@ -9,7 +9,8 @@ import {
   Home, Sun, Plus, Search, ClipboardList, Settings, ChevronDown,
   Star, Quote, ZapOff, Sparkles, Rocket, Fingerprint, Eye, 
   LayoutDashboard, ListChecks, History, PieChart, ShieldAlert,
-  Zap as ZapIcon, Info, ChevronUp, Droplets, Heart, Filter, Facebook, Twitter
+  Zap as ZapIcon, Info, ChevronUp, Droplets, Heart, Filter, Facebook, Twitter,
+  Send, Bot, XCircle
 } from 'lucide-react';
 import DataManager from './auth/DataManager';
 import LoginModal from './components/LoginModal';
@@ -83,6 +84,175 @@ const Navbar = ({ onLoginClick, user, onLogout }: { onLoginClick: () => void, us
         </div>
       )}
     </nav>
+  );
+};
+
+// --- CHATBOT COMPONENT ---
+
+const ChatBot = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<Array<{ text: string; isBot: boolean; options?: string[]; id: number }>>([
+    { 
+      text: '👋 Olá! Sou o assistente da Contra Tempo. Como posso te ajudar hoje?', 
+      isBot: true,
+      options: ['📍 Endereço e localização', '⏰ Horários de treino', '🏃 Sobre a assessoria', '💰 Valores e planos', '📱 Falar no WhatsApp'],
+      id: Date.now()
+    }
+  ]);
+  const [showWhatsAppPrompt, setShowWhatsAppPrompt] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isTyping]);
+
+  const handleOption = (option: string, messageId: number) => {
+    // Previne múltiplos cliques
+    if (isTyping) return;
+    
+    // Remove as opções da mensagem anterior para prevenir cliques duplicados
+    setMessages(prev => prev.map(msg => 
+      msg.id === messageId ? { ...msg, options: undefined } : msg
+    ));
+
+    // Adiciona a mensagem do usuário
+    setMessages(prev => [...prev, { text: option, isBot: false, id: Date.now() }]);
+    setIsTyping(true);
+
+    setTimeout(() => {
+      let response = '';
+      let options: string[] | undefined;
+
+      if (option.includes('Endereço')) {
+        response = '📍 Nossa localização:\n\nR. Prof. Adauto Pereira, 307\nTatuí, SP\n\nEstamos em uma localização privilegiada com fácil acesso!';
+        options = ['⏰ Ver horários', '🏃 Sobre a assessoria', '📱 Falar no WhatsApp'];
+      } else if (option.includes('Horários')) {
+        response = '⏰ Horários de Treino:\n\n🌅 Segunda a Sexta:\n• 5h30 - Treino matinal\n• 18h30 - Treino noturno\n\n☀️ Sábados:\n• 6h00 - Longão\n\nTreinos adaptados ao seu nível!';
+        options = ['📍 Ver localização', '💰 Ver valores', '📱 Falar no WhatsApp'];
+      } else if (option.includes('Sobre')) {
+        response = '🏃 Sobre a Contra Tempo:\n\nDesde 2014 transformando corredores em atletas de elite!\n\n✅ Planilhas individualizadas\n✅ CT próprio equipado\n✅ Fisioterapia e nutrição\n✅ Acompanhamento em provas\n✅ Metodologia comprovada';
+        options = ['💰 Ver valores', '⏰ Ver horários', '📱 Falar no WhatsApp'];
+      } else if (option.includes('Valores')) {
+        response = '💰 Nossos Planos:\n\n🥇 Plano Completo\n• Treinos presenciais ilimitados\n• Planilha individualizada\n• Suporte no WhatsApp\n\n🥈 Plano Online\n• Planilha personalizada\n• Ajustes semanais\n• Grupo exclusivo\n\nPara valores específicos, vamos conversar no WhatsApp?';
+        setShowWhatsAppPrompt(true);
+      } else if (option.includes('WhatsApp')) {
+        response = '📱 Perfeito! Vou te direcionar para o WhatsApp agora.\n\nVou incluir suas dúvidas na mensagem! 😊';
+        setShowWhatsAppPrompt(true);
+      }
+
+      setMessages(prev => [...prev, { text: response, isBot: true, options, id: Date.now() }]);
+      setIsTyping(false);
+    }, 600);
+  };
+
+  const openWhatsApp = () => {
+    const interests = messages
+      .filter(m => !m.isBot)
+      .map(m => m.text)
+      .join(', ');
+    
+    const message = encodeURIComponent(
+      `Olá! Vim pelo site e tenho interesse em: ${interests || 'conhecer a assessoria'}`
+    );
+    window.open(`https://wa.me/5515997150805?text=${message}`, '_blank');
+    setIsOpen(false);
+  };
+
+  return (
+    <>
+      {!isOpen && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="whatsapp-float bg-[#fdf001] w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center shadow-2xl hover:bg-white transition-all z-[1000] group"
+        >
+          <Bot className="w-7 h-7 md:w-8 md:h-8 text-black group-hover:scale-110 transition-transform" />
+        </button>
+      )}
+
+      {isOpen && (
+        <div className="fixed bottom-4 right-4 left-4 md:left-auto md:bottom-6 md:right-6 md:w-[420px] max-h-[85vh] md:h-[600px] bg-black border-2 border-[#fdf001]/20 rounded-3xl shadow-2xl z-[1000] flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-[#fdf001] to-[#ffa500] p-4 md:p-6 flex items-center justify-between">
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="bg-black p-2 rounded-xl">
+                <Bot className="w-5 h-5 md:w-6 md:h-6 text-[#fdf001]" />
+              </div>
+              <div>
+                <h3 className="font-black italic uppercase text-black text-base md:text-lg tracking-tight">Contra Tempo Bot</h3>
+                <p className="text-[10px] md:text-xs text-black/70 font-bold">Online agora</p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                setShowWhatsAppPrompt(false);
+              }}
+              className="bg-black/20 hover:bg-black/40 p-2 rounded-lg transition-all"
+            >
+              <X className="w-5 h-5 text-black" />
+            </button>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 md:space-y-4 bg-[#050505]">
+            {messages.map((msg) => (
+              <div key={msg.id} className={`flex ${msg.isBot ? 'justify-start' : 'justify-end'}`}>
+                <div
+                  className={`max-w-[90%] md:max-w-[85%] rounded-2xl p-3 md:p-4 ${
+                    msg.isBot
+                      ? 'bg-white/5 border border-white/10 text-white'
+                      : 'bg-[#fdf001] text-black'
+                  }`}
+                >
+                  <p className="text-xs md:text-sm font-medium whitespace-pre-line leading-relaxed">{msg.text}</p>
+                  
+                  {msg.options && !isTyping && (
+                    <div className="mt-3 md:mt-4 space-y-2">
+                      {msg.options.map((option, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handleOption(option, msg.id)}
+                          disabled={isTyping}
+                          className="w-full bg-white/10 hover:bg-[#fdf001] hover:text-black border border-white/20 hover:border-[#fdf001] rounded-xl p-2.5 md:p-3 text-left text-[10px] md:text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+            
+            {/* Typing indicator */}
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex gap-1.5">
+                  <span className="w-2 h-2 bg-[#fdf001] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                  <span className="w-2 h-2 bg-[#fdf001] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                  <span className="w-2 h-2 bg-[#fdf001] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                </div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* Footer */}
+          {showWhatsAppPrompt && (
+            <div className="p-3 md:p-4 bg-black border-t border-white/10">
+              <button
+                onClick={openWhatsApp}
+                className="w-full bg-green-500 hover:bg-green-600 text-white py-3 md:py-4 rounded-2xl font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 md:gap-3 shadow-lg text-xs md:text-sm active:scale-95"
+              >
+                <MessageSquare className="w-4 h-4 md:w-5 md:h-5" />
+                Abrir WhatsApp
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </>
   );
 };
 
@@ -1517,11 +1687,7 @@ const App = () => {
 
       <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} onLogin={handleLogin} />
       
-      {!user && (
-        <a href="https://wa.me/5515997150805" target="_blank" className="whatsapp-float bg-green-500 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl hover:bg-green-600 transition-all z-[1000] scale-90 md:scale-100">
-          <MessageSquare className="w-8 h-8 text-white" />
-        </a>
-      )}
+      {!user && <ChatBot />}
     </div>
   );
 };
